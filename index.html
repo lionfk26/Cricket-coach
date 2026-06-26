@@ -17,7 +17,7 @@
                 <div class="h-3 w-3 rounded-full bg-emerald-500 animate-pulse"></div>
                 <h1 class="text-xl font-bold tracking-wider text-slate-200">VELOCITY<span class="text-emerald-400">AI</span></h1>
             </div>
-            <span class="text-xs bg-slate-800 border border-slate-700 text-slate-400 px-3 py-1 rounded-full font-mono">Biomechanics Engine v2.0</span>
+            <span class="text-xs bg-slate-800 border border-slate-700 text-slate-400 px-3 py-1 rounded-full font-mono">Biomechanics Engine v2.1</span>
         </div>
     </header>
 
@@ -26,14 +26,14 @@
         <div class="lg:col-span-2 space-y-4">
             <div class="relative w-full aspect-video rounded-2xl overflow-hidden border border-slate-800 bg-slate-900 shadow-2xl shadow-emerald-950/10">
                 <video id="webcam" class="hidden" autoplay playsinline></video>
-                <canvas id="output_canvas" class="w-full h-full object-cover -scale-x-100"></canvas>
+                <canvas id="output_canvas" class="w-full h-full object-cover"></canvas>
                 
                 <div id="loading-overlay" class="absolute inset-0 bg-slate-950 flex flex-col items-center justify-center gap-3 transition-opacity duration-500">
                     <div class="w-8 h-8 border-4 border-emerald-400 border-t-transparent rounded-full animate-spin"></div>
                     <p class="text-sm text-slate-400 font-mono">Initializing neural tracking web structures...</p>
                 </div>
             </div>
-            <p class="text-xs text-slate-500 font-mono text-center">💡 Pro Tip: Center your full upper body in the frame. The camera view is mirrored natively for ease of use.</p>
+            <p class="text-xs text-slate-500 font-mono text-center">💡 Pro Tip: Center your full body in the frame. Hand height relative to the shoulder triggers the calculation state.</p>
         </div>
 
         <div class="space-y-6">
@@ -50,6 +50,10 @@
                         <span id="peak-angle" class="text-3xl font-extrabold text-emerald-400 font-mono">0°</span>
                     </div>
                 </div>
+                
+                <button id="switch-camera" class="w-full mt-4 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 border border-slate-700 text-slate-200 font-semibold py-2 px-4 rounded-xl transition duration-200 flex items-center justify-center gap-2 text-sm">
+                    🔄 Swap Camera Lens Direction
+                </button>
             </div>
 
             <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 backdrop-blur space-y-4">

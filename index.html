@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VelocityAI // Throw Mechanics Lab</title>
+    <title>VelocityAI // Multi-Sport Lab</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
@@ -17,7 +17,7 @@
                 <div class="h-3 w-3 rounded-full bg-emerald-500 animate-pulse"></div>
                 <h1 class="text-xl font-bold tracking-wider text-slate-200">VELOCITY<span class="text-emerald-400">AI</span></h1>
             </div>
-            <span class="text-xs bg-slate-800 border border-slate-700 text-slate-400 px-3 py-1 rounded-full font-mono">Biomechanics Engine v2.1</span>
+            <span id="engine-mode-badge" class="text-xs bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-3 py-1 rounded-full font-mono font-bold tracking-wide uppercase">Pitching Mode</span>
         </div>
     </header>
 
@@ -33,26 +33,40 @@
                     <p class="text-sm text-slate-400 font-mono">Initializing neural tracking web structures...</p>
                 </div>
             </div>
-            <p class="text-xs text-slate-500 font-mono text-center">💡 Pro Tip: Center your full body in the frame. Hand height relative to the shoulder triggers the calculation state.</p>
+            
+            <div class="bg-slate-900/40 border border-slate-800/60 rounded-xl p-4 flex items-center gap-4">
+                <label for="zoom-control" class="text-xs font-mono text-slate-400 uppercase font-bold tracking-wider whitespace-nowrap">Digital Zoom:</label>
+                <input id="zoom-control" type="range" min="1" max="3" step="0.1" value="1" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-400">
+                <span id="zoom-value" class="text-xs font-mono text-slate-300 min-w-[2ch]">1.0x</span>
+            </div>
         </div>
 
         <div class="space-y-6">
             
+            <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 backdrop-blur flex gap-2">
+                <button id="mode-pitching" class="flex-1 bg-emerald-500 text-slate-950 font-bold py-2.5 px-4 rounded-xl text-xs uppercase tracking-wider transition duration-200 shadow-md shadow-emerald-500/10">
+                    ⚾ Pitching
+                </button>
+                <button id="mode-batting" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 px-4 rounded-xl text-xs uppercase tracking-wider transition duration-200">
+                    🏏 Batting
+                </button>
+            </div>
+
             <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 backdrop-blur">
                 <h2 class="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-4 font-mono">Live Telemetry</h2>
                 <div class="grid grid-cols-2 gap-4">
                     <div class="bg-slate-950 p-4 rounded-xl border border-slate-800/60">
-                        <span class="text-xs text-slate-500 block mb-1">Live Flexion</span>
+                        <span id="telemetry-live-label" class="text-xs text-slate-500 block mb-1">Live Flexion</span>
                         <span id="live-angle" class="text-3xl font-extrabold text-slate-200 font-mono">0°</span>
                     </div>
                     <div class="bg-slate-950 p-4 rounded-xl border border-slate-800/60">
-                        <span class="text-xs text-slate-500 block mb-1">Peak Flexion</span>
+                        <span id="telemetry-peak-label" class="text-xs text-slate-500 block mb-1">Peak Flexion</span>
                         <span id="peak-angle" class="text-3xl font-extrabold text-emerald-400 font-mono">0°</span>
                     </div>
                 </div>
                 
                 <button id="switch-camera" class="w-full mt-4 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 border border-slate-700 text-slate-200 font-semibold py-2 px-4 rounded-xl transition duration-200 flex items-center justify-center gap-2 text-sm">
-                    🔄 Swap Camera Lens Direction
+                    🔄 Swap Camera Lens
                 </button>
             </div>
 
@@ -74,12 +88,6 @@
                         Step back into full view of the lens and cycle through a throwing motion. Raise your hand above shoulder height to trigger recording metrics.
                     </p>
                 </div>
-            </div>
-
-            <div class="border border-slate-800/40 rounded-xl p-4 bg-slate-950/40 text-xs text-slate-400 space-y-2">
-                <span class="font-semibold text-slate-300 block font-mono">Target Biomechanical Bounds:</span>
-                <p>🎯 <b class="text-slate-200">80° - 110°:</b> Perfect load phase. Provides high leverage protection for the UCL.</p>
-                <p>⚠️ <b class="text-slate-200">&gt; 110°:</b> Arm dragging. Causes mechanical power loss.</p>
             </div>
 
         </div>

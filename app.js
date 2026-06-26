@@ -2,35 +2,27 @@ const videoElement = document.getElementById('webcam');
 const canvasElement = document.getElementById('output_canvas');
 const canvasCtx = canvasElement.getContext('2d');
 const loadingOverlay = document.getElementById('loading-overlay');
+const switchCamBtn = document.getElementById('switch-camera');
 
-// DOM Element targets
 const uiLiveAngle = document.getElementById('live-angle');
 const uiPeakAngle = document.getElementById('peak-angle');
 const uiStatusBadge = document.getElementById('status-badge');
 const uiFeedback = document.getElementById('coaching-feedback');
 
-// Application Tracking States
 let isThrowing = false;
 let peakElbowAngle = 0;
+let currentFacingMode = "user"; // "user" for front-facing, "environment" for back-facing
+let localStream = null;
 
-/**
- * Calculates the internal angle at point B (Elbow) relative to A (Shoulder) and C (Wrist)
- */
 function calculateAngle(p1, p2, p3) {
     let radians = Math.atan2(p3.y - p2.y, p3.x - p2.x) - Math.atan2(p1.y - p2.y, p1.x - p2.x);
     let angle = Math.abs((radians * 180.0) / Math.PI);
-    if (angle > 180.0) {
-        angle = 360 - angle;
-    }
+    if (angle > 180.0) angle = 360 - angle;
     return Math.round(angle);
 }
 
-/**
- * Validates dynamic throw values and handles UI display states
- */
 function evaluateThrow(maxAngle) {
     uiPeakAngle.innerText = `${maxAngle}°`;
-    
     if (maxAngle >= 80 && maxAngle <= 110) {
         uiStatusBadge.className = "inline-block px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 border border-emerald-500/30 text-emerald-400";
         uiStatusBadge.innerText = "Excellent Form";
@@ -47,12 +39,14 @@ function evaluateThrow(maxAngle) {
 }
 
 /**
- * MediaPipe Frame Execution Callback Loop
+ * Filter out connection lines attached to facial coordinates (0 to 10)
  */
+function filterFaceConnections(connections) {
+    return connections.filter(conn => conn[0] > 10 && conn[1] > 10);
+}
+
 function onResults(results) {
-    if (loadingOverlay) {
-        loadingOverlay.classList.add('opacity-0', 'pointer-events-none');
-    }
+    if (loadingOverlay) loadingOverlay.classList.add('opacity-0', 'pointer-events-none');
 
     if (canvasElement.width !== videoElement.videoWidth) {
         canvasElement.width = videoElement.videoWidth;
@@ -61,14 +55,33 @@ function onResults(results) {
 
     canvasCtx.save();
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+    
+    // Toggle Horizontal Mirror effect based on active camera choice orientation
+    if (currentFacingMode === "user") {
+        canvasCtx.translate(canvasElement.width, 0);
+        canvasCtx.scale(-1, 1);
+    }
+    
     canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
 
     if (results.poseLandmarks) {
-        // Subtle, professional slate-colored lines and emerald joint markers
-        drawConnectors(canvasCtx, results.poseLandmarks, POSE_CONNECTIONS, {color: '#475569', lineWidth: 2});
-        drawLandmarks(canvasCtx, results.poseLandmarks, {color: '#10b981', lineWidth: 1, radius: 3});
+        // Create filtered versions that leave out all face landmarks (index 0 - 10)
+        const filteredLandmarks = results.poseLandmarks.map((lm, idx) => {
+            return idx <= 10 ? { x: 0, y: 0, z: 0, visibility: 0 } : lm;
+        });
 
-        // Right side landmarks (Shoulder=12, Elbow=14, Wrist=16)
+        const bodyConnections = filterFaceConnections(POSE_CONNECTIONS);
+
+        // Draw body segments cleanly
+        drawConnectors(canvasCtx, filteredLandmarks, bodyConnections, {color: '#475569', lineWidth: 3});
+        
+        // Draw individual tracking nodes
+        for (let i = 11; i < filteredLandmarks.length; i++) {
+            if(filteredLandmarks[i].visibility > 0.5) {
+                drawLandmarks(canvasCtx, [filteredLandmarks[i]], {color: '#10b981', lineWidth: 1, radius: 3});
+            }
+        }
+
         const shoulder = results.poseLandmarks[12];
         const elbow = results.poseLandmarks[14];
         const wrist = results.poseLandmarks[16];
@@ -78,7 +91,6 @@ function onResults(results) {
                 const currentAngle = calculateAngle(shoulder, elbow, wrist);
                 uiLiveAngle.innerText = `${currentAngle}°`;
 
-                // Throw Tracking Logic: Triggered when hand rises above shoulder height
                 if (wrist.y < shoulder.y) {
                     if (!isThrowing) {
                         isThrowing = true;
@@ -86,9 +98,7 @@ function onResults(results) {
                         uiStatusBadge.className = "inline-block px-3 py-1 rounded-full text-xs font-medium bg-emerald-500 animate-pulse text-slate-950";
                         uiStatusBadge.innerText = "Tracking Throw...";
                     } else {
-                        if (currentAngle > peakElbowAngle) {
-                            peakElbowAngle = currentAngle;
-                        }
+                        if (currentAngle > peakElbowAngle) peakElbowAngle = currentAngle;
                     }
                 } else {
                     if (isThrowing) {
@@ -115,15 +125,48 @@ pose.setOptions({
 
 pose.onResults(onResults);
 
-const camera = new Camera(videoElement, {
-    onFrame: async () => {
-        await pose.send({image: videoElement});
-    },
-    width: 640,
-    height: 480
+/**
+ * Handles initialization and device swapping safely using native web stream interfaces
+ */
+async function startCameraStream(facingMode) {
+    if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+    }
+
+    try {
+        currentFacingMode = facingMode;
+        const constraints = {
+            video: {
+                facingMode: facingMode,
+                width: { ideal: 640 },
+                height: { ideal: 480 }
+            }
+        };
+
+        localStream = await navigator.mediaDevices.getUserMedia(constraints);
+        videoElement.srcObject = localStream;
+        
+        // Feed frames to MediaPipe process manually loop
+        videoElement.onloadedmetadata = () => {
+            async function processFrame() {
+                if (!localStream.active) return;
+                await pose.send({ image: videoElement });
+                requestAnimationFrame(processFrame);
+            }
+            processFrame();
+        };
+
+    } catch (err) {
+        console.error("Camera deployment error:", err);
+        alert("Unable to open camera feed source.");
+    }
+}
+
+// Click Trigger Event Link for Lens Swapping
+switchCamBtn.addEventListener('click', () => {
+    let targetMode = currentFacingMode === "user" ? "environment" : "user";
+    startCameraStream(targetMode);
 });
 
-camera.start().catch(err => {
-    alert("Camera permission denied or camera device is unavailable.");
-    console.error(err);
-});
+// Kickoff initial frame engine bootup
+startCameraStream("user");
